@@ -8,7 +8,8 @@ QLearnerNode::QLearnerNode(std::string qtablePath,
 {
    /*
     * QLearner(epsilon, alpha, gamma, tsprate, fallcount, myTime);
-    * TODO: Make sure that the values of epsilon, gamma are optimal. @Ref: (Paper) epsilon = 0.3, alpha = 0.1
+    * TODO: Make sure that the values of epsilon, gamma are optimal. 
+    * @Ref: (Paper) epsilon = 0.3, alpha = 0.1
    */
    agent.init(0.05f, 0.8f, 0.2f, 0.7f, 50, 9.04);
 }

@@ -9,7 +9,8 @@
 */
 //enum FeetState{BOTH_ON_GROUND, RIGHT_ON_GROUND, LEFT_ON_GROUND, BOTH_NOT_ON_GROUND};
 /*
- * Now we have 16 states based on the values of 8 fsrs on each foot i.e 2 states for each foot i.e front back e.g: value 
+ * Now we have 16 states based on the values of 8 fsrs on each foot,
+ * i.e 2 states for each foot i.e front back e.g: value 
  * of front and back  fsrs for each foot, 2 exp 4 = 16 states.
  *    left	 right
  * +--------+ +--------+
@@ -17,15 +18,24 @@
  * |        | |        |
  * |0.0  0.0| |0.0  0.0|  back
 */
-enum FeetState{ZERO_FSRS, R_BACK, L_BACK, L_R_BACK, R_FRONT, R_FRONT_BACK, L_BACK_R_FRONT, L_R_BACK_R_FRONT, L_FRONT, L_FRONT_R_BACK, L_FRONT_BACK, L_R_BACK_L_FRONT, L_R_FRONT, L_R_FRONT_R_BACK, L_R_FRONT_L_BACK, ALL_FSRS};
+enum FeetState{ZERO_FSRS, R_BACK, L_BACK, L_R_BACK, R_FRONT, 
+    R_FRONT_BACK, L_BACK_R_FRONT, L_R_BACK_R_FRONT, L_FRONT, 
+    L_FRONT_R_BACK, L_FRONT_BACK, L_R_BACK_L_FRONT, L_R_FRONT, 
+    L_R_FRONT_R_BACK, L_R_FRONT_L_BACK, ALL_FSRS};
 
 /*
  * Available Patterns
 */
-enum PatternType{ PLATEAU , QUIESCENT , AMORTI , OSCILLATORY, SLOWOSCILLATION , FASTOSCILLATION};
+enum PatternType{ PLATEAU , 
+    QUIESCENT , 
+    AMORTI , 
+    OSCILLATORY ,
+    SLOWOSCILLATION , 
+    FASTOSCILLATION};
 
 /*
- * sigma_s, sigma_f values for the available patterns. //TODO: Move the '#define' values to a seperate header file ('rl_define.h').
+ * sigma_s, sigma_f values for the available patterns. 
+ * //TODO: Move the '#define' values to a seperate header file ('rl_define.h').
 */
 #define Plateau_sigma_s = 0;
 #define Plateau_sigma_f = 2.8;
@@ -215,7 +225,8 @@ class Action
    rs_neuron rs_neuron_pattern;
 
    /*
-    * A simple method to compare Actions i.e rs_neuron values //TODO: Also incorporate pfneuron only if applicable.
+    * A simple method to compare Actions i.e rs_neuron values 
+    * //TODO: Also incorporate pfneuron only if applicable.
    */
    bool compareActions(const Action& action) const
    {
@@ -230,7 +241,8 @@ class Action
    }
 
    /*
-    * To make sure that valid action is generated, invalid actions also got generated sometimes due to 'unknown' reasons.
+    * To make sure that valid action is generated, invalid actions also got 
+    * generated sometimes due to 'unknown' reasons.
    */
    bool isValid()
    {

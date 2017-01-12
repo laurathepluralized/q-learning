@@ -48,7 +48,9 @@ private:
 
    bool insertStateActionPair(const State& state, const Action& action);
 
-   FeetState determineState(double lfrontL, double lfrontR, double rfrontL, double rfrontR, double lbackL, double lbackR, double rbackL, double rbackR);
+   FeetState determineState(double lfrontL, double lfrontR, 
+           double rfrontL, double rfrontR, double lbackL, double lbackR, 
+           double rbackL, double rbackR);
 
    bool isStatePresent(std::vector<QTable>& q, const State& state) const;
 
@@ -81,7 +83,8 @@ public:
             float gamma, float tsprate
             );
 
-   void init(float epsilon, float alpha, float gamma, float tsprate, unsigned int fallthreshold, double myTime);
+   void init(float epsilon, float alpha, float gamma, float tsprate, 
+           unsigned int fallthreshold, double myTime);
 
    int getReward();
 

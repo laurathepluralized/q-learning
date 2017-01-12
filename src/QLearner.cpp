@@ -6,16 +6,20 @@ QLearner::QLearner(float epsilon, float alpha,
                    float gamma, float tsprate): epsilon(epsilon), alpha(alpha),
                	   gamma(gamma), tsprate(tsprate), currentQ(NULL)
 {
-   hit = false;  /* assume that robot is not hit just at the start TODO: make this assumption dynamic + realistic */
-   down = false; /* assume that robot is not down just at the start TODO: make this assumption dynamic + realistic */
+   hit = false;  /* assume that robot is not hit just at the start */
+    /*TODO: make this assumption dynamic + realistic */
+   down = false; /* assume that robot is not down just at the start */
+    /*TODO: make this assumption dynamic + realistic */
 }
 
 /*
- * This method is needed as object declaration & initialization cannot be done seperately (C++), so the 3 params constructor
- * is of no use if QLearner has to be used a member of a custom class.
+ * This method is needed as object declaration & initialization cannot 
+ * be done seperately (C++), so the 3 params constructor is of no use 
+ * if QLearner has to be used a member of a custom class.
 */
 
-void QLearner::init(float epsilon, float alpha, float gamma, float tsprate, unsigned int fallthreshold, double myTime)
+void QLearner::init(float epsilon, float alpha, float gamma, float tsprate, 
+        unsigned int fallthreshold, double myTime)
 {
    this->epsilon       = epsilon;
    this->alpha         = alpha;
@@ -33,13 +37,15 @@ void QLearner::init(float epsilon, float alpha, float gamma, float tsprate, unsi
 
 double QLearner::getQValue(const State& state, const Action& action)
 {
-   // search '<State, Action> Q' and return the 'Q' value for that state, if not found return 0
+   // search '<State, Action> Q' and return the 'Q' value for 
+   // that state, if not found return 0
 
    // Searching for 'Q' value of an action 'a' in state 's'
    std::vector<QTable>::iterator iter;
    for(iter = Q.begin(); iter != Q.end(); ++iter)
    {
-      if(isStateSeen(iter->state_action_pair, state, action)) {
+      if(isStateSeen(iter->state_action_pair, state, action))
+      {
          return iter->qvalue;
       }
    }
@@ -56,7 +62,8 @@ bool QLearner::updateQValue(const State& state, const Action& action, double qva
    std::vector<QTable>::iterator iter;
    for(iter = Q.begin(); iter != Q.end(); ++iter)
    {
-      if(isStateSeen(iter->state_action_pair, state, action)) {
+      if(isStateSeen(iter->state_action_pair, state, action))
+      {
          iter->qvalue = qvalue;
          return true;
       }
@@ -109,7 +116,8 @@ Action QLearner::getPolicy(const State& state)
    }
 
    /*
-    * Got the 'q-values' for all the actions, now find the max q-val and then return action for that q-val.
+    * Got the 'q-values' for all the actions, now find the max q-val 
+    * and then return action for that q-val.
    */
 
    std::vector<double>::iterator iterd;
@@ -130,21 +138,25 @@ Action QLearner::getPolicy(const State& state)
 }
 
 /*
- * Once the agent has learned all the 'good actions' for all 'possible states' then no need to go through, 
+ * Once the agent has learned all the 'good actions' for all 
+ * 'possible states' then no need to go through, 
  * just use the 'policy' which it had already learned :) 
- * @Warn: Use only when u are really confident else u will not make the robot fall :)
- * call Action::isValid() to make sure that you get the correct action;
+ * call Action::isValid() to make sure that you get the correct action
 */
 Action QLearner::justPolicy(State& state)
 {
    std::vector<QTable>::iterator iter;
    for(iter = Policy.begin(); iter != Policy.end(); ++iter)
    {
-      if(iter->state_action_pair.state.compareFeetState(state.feet_state))
-         return iter->state_action_pair.action;
+       if(iter->state_action_pair.state.compareFeetState(state.feet_state))
+       {
+          return iter->state_action_pair.action;
+       }
    }
-   /* If policy for unseen state is requested then just send the random action, the caller should have known not to use 
-    * QLearner::justPolicy(..) when correct policy is not discovered for many possible states.
+   /* If policy for unseen state is requested then just send the 
+    * random action, the caller should have known not to use 
+    * QLearner::justPolicy(..) when correct policy is not 
+    * discovered for many possible states.
    */
    Action action = getAction(state);
    LOG("No policy found for state: %s, generating random action: %s\n", 
@@ -164,7 +176,8 @@ Action QLearner::justPolicy(State& state)
  * HINT: you might want to use util.flipCoin
  * Where..... (see util.py)
  
- * Greater the value of 'epsilon', greater will be the chances to select a random action.
+ * Greater the value of 'epsilon', greater will be the chances 
+ * to select a random action.
 
 */
 Action QLearner::getAction(State& state)
@@ -174,29 +187,40 @@ Action QLearner::getAction(State& state)
    */
    float epsilon = this->epsilon;
    if(!isStatePresent(Q, state))
-      epsilon = 1.0f;
+   {
+       epsilon = 1.0f;
+   }
    Action action;
    if(flipCoin(epsilon))
    {
       std::vector<Action> listofactions;
       /*
-       * With 'tsprate' probability try 'type 2' solution as this is our base solution :), else try random stuff.
+       * With 'tsprate' probability try 'type 2' solution as this is our base 
+       * solution, else try random stuff.
       */
       if(flipCoin(tsprate))
-         listofactions = getLegalActions(state, 0); // type '0' :) //TODO: Try other types as well
+      {
+          listofactions = getLegalActions(state, 0); // type '0'
+          //TODO: Try other types as well
+      }
       else
-         listofactions = getLegalActions(state, randomLimit(0, 2));
+      {
+          listofactions = getLegalActions(state, randomLimit(0, 2));
+      }
 
       action = listofactions[randomLimit(0, listofactions.size())];
    }
    else
-      action = getPolicy(state);
+   {
+       action = getPolicy(state);
+   }
 
    return action;
 }
 
 /*
- * Do the action in actual, might not bee needed as the action has to be directly applied to the motors from the 'Controller'.
+ * Do the action for real, might not be needed as the action 
+ * has to be directly applied to the motors from the 'Controller'.
 */
 void QLearner::doAction(Action& action)
 {
@@ -222,10 +246,13 @@ void QLearner::update(State& state, Action& action, State& nextstate, int reward
       qvalues.push_back(getQValue(nextstate, *iter));
    }
    if(qvalues.size() == 0)
-      sample = reward;
+   {
+       sample = reward;
+   }
    else
    {
-      // For speed avoiding call to getValue() as half of compuatation is already performed in the above loop...
+      // For speed avoiding call to getValue() as half of compuatation 
+      // is already performed in the above loop...
       double max = -DBL_MAX;
       std::vector<double>::iterator iterd;
       for(iterd = qvalues.begin() ; iterd < qvalues.end() ; ++iterd)
@@ -242,21 +269,35 @@ void QLearner::update(State& state, Action& action, State& nextstate, int reward
    double valueupdate = ( (1.0 - alpha) * getQValue(state, action) ) + (alpha * sample);
    // update the 'q-value'
    if(updateQValue(state, action, valueupdate))
+   {
       LOG("Updated qvalue for state: %s , action: %s with qvalue: %f.\n", 
           state.getName().c_str(), action.getName().c_str(), valueupdate);
+   }
    else
-      LOG("'QLearner::update()': Failed to Update qvalue for state: %s , action: %s with qvalue: %f. State-Action pair not found in 'Q-Table'.\n", state.getName().c_str(), action.getName().c_str(), valueupdate);
+   {
+       LOG("'QLearner::update()': Failed to Update qvalue for state: %s , action: %s with qvalue: %f. State-Action pair not found in 'Q-Table'.\n", state.getName().c_str(), action.getName().c_str(), valueupdate);
+   }
 }
 
 int QLearner::getReward()
 {
    if(!hit) // no living reward
+   {
       return 0;
-   else // TODO: wait for few seconds 'in case of perturbation' to get reward, as it will take some time to fall, sleep() ?
-      if(!down) // robot survives the collision TODO: how to detect that robot actually survives or is falling down ??
+   }
+   else 
+       // TODO: wait for few seconds 'in case of perturbation' to get reward, 
+       // as it will take some time to fall, sleep()
+      if(!down) 
+      {
+          // robot survives the collision 
+          // TODO: how to detect that robot actually survives or is falling down
          return 10;
+      }
       else
+      {
          return -5;
+      }
 }
 
 bool QLearner::loadPolicy(const std::string filename)
@@ -264,7 +305,9 @@ bool QLearner::loadPolicy(const std::string filename)
    LOG("QLearner::loadPolicy()\n");
    std::ifstream file(filename.c_str());
    if(!file)
+   {
       return false;
+   }
    std::string line;
    /*
     * FeetState Q-value action1,action2... \n
@@ -282,7 +325,9 @@ bool QLearner::loadPolicy(const std::string filename)
       qtab.qvalue = tvalues[1];
       qtab.state_action_pair.state.feet_state = getFeetState(state);
       for(int i = 2; i != tvalues.size(); i++)
+      {
            qtab.state_action_pair.action.rs_neuron_pattern.rsneuron[i-2].pattern = getPattern(tvalues[i]);
+      }
       Policy.push_back(qtab);
    }
       LOG("Size Policy: %zu\n", Policy.size());
@@ -297,7 +342,9 @@ bool QLearner::savePolicy(const std::string filename)
    FILE* file= NULL;
    file = fopen(filename.c_str(),"w");
    if(!file)
+   {
       return false;
+   }
    for(iter = policyQ.begin(); iter != policyQ.end(); ++iter)
    {
       /*
@@ -328,7 +375,8 @@ void QLearner::printCurrentPolicy()
    int count = 1;
    for(iter = policyQ.begin(); iter != policyQ.end(); ++iter)
    {
-      LOG("%i.\n%s\n *  %s\n  ->  %lf\n\n", count, iter->state_action_pair.state.getName().c_str(), iter->state_action_pair.action.getName().c_str(), iter->qvalue);
+      LOG("%i.\n%s\n *  %s\n  ->  %lf\n\n", count, iter->state_action_pair.state.getName().c_str(), 
+              iter->state_action_pair.action.getName().c_str(), iter->qvalue);
       count++;
    }
 }
@@ -346,7 +394,10 @@ void QLearner::printPersistentPolicy()
    int count = 1;
    for(iter = Policy.begin(); iter != Policy.end(); ++iter)
    {
-      LOG("%i.\n%s\n *  %s\n  ->  %lf\n\n", count, iter->state_action_pair.state.getName().c_str(), iter->state_action_pair.action.getName().c_str(), iter->qvalue);
+      LOG("%i.\n%s\n *  %s\n  ->  %lf\n\n", count, 
+              iter->state_action_pair.state.getName().c_str(), 
+              iter->state_action_pair.action.getName().c_str(), 
+              iter->qvalue);
       count++;
    }
 }
@@ -367,14 +418,18 @@ bool QLearner::loadQTable(const std::string filename)
       std::stringstream linestream(line);
       double j;
       while(linestream >> j)
+      {
          tvalues.push_back(j);
+      }
       QTable qtab;
       int state;
       state = tvalues[0];
       qtab.qvalue = tvalues[1];
       qtab.state_action_pair.state.feet_state = getFeetState(state);
       for(int i = 2; i != tvalues.size(); i++)
+      {
            qtab.state_action_pair.action.rs_neuron_pattern.rsneuron[i-2].pattern = getPattern(tvalues[i]);
+      }
       Q.push_back(qtab);
    }
       LOG("Size QTable: %zu\n", Q.size());
@@ -388,7 +443,9 @@ bool QLearner::saveQTable(const std::string filename)
    FILE* file= NULL;
    file = fopen(filename.c_str(),"w");
    if(!file)
+   {
       return false;
+   }
    for(iter = Q.begin(); iter != Q.end(); ++iter)
    {
       /*
@@ -418,7 +475,10 @@ void QLearner::printQTable()
    int count = 1;
    for(iter = Q.begin(); iter != Q.end(); ++iter)
    {
-      LOG("%i.\n%s\n *  %s\n  ->  %lf\n\n", count, iter->state_action_pair.state.getName().c_str(), iter->state_action_pair.action.getName().c_str(), iter->qvalue);
+      LOG("%i.\n%s\n *  %s\n  ->  %lf\n\n", count, 
+              iter->state_action_pair.state.getName().c_str(), 
+              iter->state_action_pair.action.getName().c_str(), 
+              iter->qvalue);
       count++;
    }
 }
@@ -429,14 +489,16 @@ bool QLearner::createPersistence(const std::string qtablePath, const std::string
    file = fopen(qtablePath.c_str(),"w");
    if(!file)
    {
-      ERROR("Error in creating file %s, please check that you have the required permissions...\n", qtablePath.c_str());
+      ERROR("Error in creating file %s; please check that you have the required permissions...\n", 
+              qtablePath.c_str());
       return false;
    }
    fclose(file);
    file = fopen(policyPath.c_str(),"w");
    if(!file)
    {
-      ERROR("Error in creating file %s, please check that you have the required permissions...\n", policyPath.c_str());
+      ERROR("Error in creating file %s; please check that you have the required permissions...\n", 
+              policyPath.c_str());
       return false;
    }
    fclose(file);
@@ -452,10 +514,13 @@ bool QLearner::isStateSeen(const StateActionPair& s_a_pair, const State& state,
    // Step 1. Compare the foot states
    if(s_a_pair.state.compareFeetState(state.feet_state))
    {
-      // Step 2. Compare the point of impact.TODO: Right now no way of getting 'point of impact'.
+      // Step 2. Compare the point of impact.
+      // TODO: Right now no way of getting 'point of impact'.
       // Step 3. Now compare the actions
       if(s_a_pair.action.compareActions(action))
+      {
          return true;
+      }
    }
 
    return false;
@@ -482,8 +547,9 @@ std::vector<Action> QLearner::getTriedActions(const State& state) const
 }
 
 /*
- * Get all the legal actions for a state [in our case, all states have same legal actions], first return the actions which were already
- * tried before and for whom we already have a Q-value.
+ * Get all the legal actions for a state [in our case, all states have same legal 
+ * actions], first return the actions which were already tried before and for 
+ * which we already have a Q-value.
 */
 std::vector<Action> QLearner::getLegalActions(const State& state, unsigned int type) const
 {
@@ -503,13 +569,15 @@ std::vector<Action> QLearner::getLegalActions(const State& state, unsigned int t
    {
       case 0:
          /*
-          * Step 1. Instead of initiliazing with random action, use the one solution which we already have.
+          * Step 1. Instead of initiliazing with random action, 
+          * use the one solution which we already have.
          */
          action = getBaseActionTSP();
          actionlist.push_back(action);
          /*
           * Step 2. Randomly pick two joints from the previously initialized action and swap them.
-          * Generate 9 radom/legal actions from TSP, 1st randomly generated action was already added to the list.
+          * Generate 9 radom/legal actions from TSP, 1st randomly generated action was already 
+          * added to the list.
          */
          for(unsigned int val = 0 ; val < (num_actions - 1) ; val++)
          {
@@ -519,13 +587,16 @@ std::vector<Action> QLearner::getLegalActions(const State& state, unsigned int t
          break;
       case 1:
          /*
-          * Step 1. Instead of initiliazing with random action, use the solution which contains all the actions.
+          * Step 1. Instead of initiliazing with random action, 
+          * use the solution which contains all the actions.
          */
          action = getAllActionTSP();
          actionlist.push_back(action);
          /*
-          * Step 2. Randomly pick two joints from the previously initialized action and swap them.
-          * Generate 9 radom/legal actions from TSP, 1st randomly generated action was already added to the list.
+          * Step 2. Randomly pick two joints from the previously 
+          * initialized action and swap them.
+          * Generate 9 radom/legal actions from TSP, 1st randomly 
+          * generated action was already added to the list.
          */
          for(unsigned int val = 0 ; val < (num_actions - 1) ; val++)
          {
@@ -535,7 +606,8 @@ std::vector<Action> QLearner::getLegalActions(const State& state, unsigned int t
          break;
       case 2:
          /*
-         * Generate 'num_actions' random/legal actions for a state to try and lets hope to find the optimal solution.
+         * Generate 'num_actions' random/legal actions for a state to try and 
+         * lets hope to find the optimal solution.
          * TODO: Find a better strategy
          * @imp: Candidate for improvement.
          */
@@ -590,11 +662,13 @@ bool QLearner::insertStateActionPair(const State& state, const Action& action)
 }
 
 /*
- * This method takes the 8 FSRS of both feet to determine the state of the robot, which would be one state out of possible 
+ * This method takes the 8 FSRS of both feet to determine the state of the robot, 
+ * which would be one state out of possible 
  * 'FeetState', see core.hpp for more details.
 */
 
-FeetState QLearner::determineState(double lfrontL, double lfrontR, double rfrontL, double rfrontR, double lbackL, double lbackR, double rbackL, double rbackR)
+FeetState QLearner::determineState(double lfrontL, double lfrontR, double rfrontL, double rfrontR, 
+        double lbackL, double lbackR, double rbackL, double rbackR)
 {
    double lfront, rfront, lback, rback;
    lfront = lfrontL + lfrontR;
@@ -647,7 +721,9 @@ bool QLearner::isStatePresent(std::vector<QTable>& q, const State& state) const
    for(iter = q.begin(); iter != q.end(); ++iter)
    {
       if(iter->state_action_pair.state.compareFeetState(state.feet_state))
+      {
          return true;
+      }
    }
    return false;
 }
@@ -663,7 +739,9 @@ int QLearner::getStateIndex(std::vector<QTable>& q, const State& state) const
    for(iter = q.begin(); iter != q.end(); ++iter)
    {
       if(iter->state_action_pair.state.compareFeetState(state.feet_state))
+      {
          return idx;
+      }
       idx++;
    }
 
@@ -686,11 +764,14 @@ std::vector<QTable> QLearner::getCurrentPolicy() const
    for(iter = Q.begin(); iter != Q.end(); ++iter)
    {
       if(!(isStatePresent(policyQ, iter->state_action_pair.state)))
+      {
          policyQ.push_back(*iter);
+      }
       else
       {
          /*
-          * If the 'q-value' of that state for another action is '>' than our q-value, then erase the previous action and add this one.
+          * If the 'q-value' of that state for another action is '>' than our q-value, 
+          * then erase the previous action and add this one.
          */
          int idx = getStateIndex(policyQ, iter->state_action_pair.state);
          if(policyQ.at(idx).qvalue < iter->qvalue)
@@ -856,7 +937,8 @@ PatternType QLearner::getPattern(const int idx) const
          pattern = FASTOSCILLATION;
          break;
       default:
-      pattern = SLOWOSCILLATION;//TODO: Assign the most probable pattern, does it even make sense ?
+      pattern = SLOWOSCILLATION;
+      //TODO: Assign the most probable pattern, does it even make sense ?
       ERROR("Unknown/Invalid Pattern : %i\n", idx);
       break;      
    }
@@ -864,7 +946,8 @@ PatternType QLearner::getPattern(const int idx) const
 }
 
 /*
- * A naive implementation to get random pattern for the action, hoping with the probability "p" ('?') to find the appropriate pattern for 
+ * A naive implementation to get random pattern for the action, 
+ * hoping with the probability "p" ('?') to find the appropriate pattern for 
  * the perturbation.
 */
 
@@ -894,9 +977,13 @@ void QLearner::getTSP(Action& act1) const
 bool QLearner::detectPerturbation(double myTime)
 {
    if(myTime < this->myTime)
+   {
       return false;
+   }
    else
+   {
       hit = true;
+   }
    return true;
 }
 
@@ -918,13 +1005,17 @@ bool QLearner::detectFall(FeetState fstate)
    }
 
    if(fallcount == -1)
+   {
       return false;
-
+   }
    else if(fallcount < fallthreshold)//TODO: adjust the threshold for 'fallcount'
+   {
       return false;
-  
+   } 
    else
+   {
       down = true;
+   }
    return true; 
 
 }
