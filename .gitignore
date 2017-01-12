@@ -1,4 +1,8 @@
 
+# Executable name
+qlearn_test
+
+# Build directories, etc
 [bB]uild/
 [dD]ebug/
 [rR]elease/
