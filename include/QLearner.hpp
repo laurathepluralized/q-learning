@@ -26,7 +26,7 @@ private:
 
    float tsprate; /* probability to try a particular TSP solution */
 
-   double myTime; //TODO: temperary variable, time at which collision occurs
+   double myTime; //TODO: temporary variable, time at which collision occurs
    int fallcount;
    unsigned int fallthreshold;
 

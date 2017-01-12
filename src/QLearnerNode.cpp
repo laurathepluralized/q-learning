@@ -1,4 +1,4 @@
-#include "QLearnerNode.hpp"
+#include "../include/QLearnerNode.hpp"
 
 QLearnerNode::QLearnerNode() { }
 
