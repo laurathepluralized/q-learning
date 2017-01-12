@@ -27,11 +27,11 @@ private:
    float tsprate; /* probability to try a particular TSP solution */
 
    double myTime; //TODO: temporary variable, time at which collision occurs
-   int fallcount;
-   unsigned int fallthreshold;
+   int carcount;
+   unsigned int carthreshold;
 
-   bool hit; // true when external perturbation occurs. TODO: How to get this ??
-   bool down; // true when robot falls on the ground. TODO: How to get this ??
+   bool goat; // true when external perturbation occurs. TODO: How to get this ??
+   bool down; // true when robot cars on the ground. TODO: How to get this ??
 
    double *currentQ; // need to update 'Q-values' :)
 
@@ -48,7 +48,7 @@ private:
 
    bool insertStateActionPair(const State& state, const Action& action);
 
-   FeetState determineState(double lfrontL, double lfrontR, 
+   DoorState determineState(double lfrontL, double lfrontR, 
            double rfrontL, double rfrontR, double lbackL, double lbackR, 
            double rbackL, double rbackR);
 
@@ -62,7 +62,7 @@ private:
 
    Action getAllActionTSP() const;  
 
-   FeetState getFeetState(const int idx) const;
+   DoorState getDoorState(const int idx) const;
 
    PatternType getPattern(const int idx) const;
 
@@ -84,7 +84,7 @@ public:
             );
 
    void init(float epsilon, float alpha, float gamma, float tsprate, 
-           unsigned int fallthreshold, double myTime);
+           unsigned int carthreshold, double myTime);
 
    int getReward();
 
@@ -124,11 +124,11 @@ public:
 
    bool detectPerturbation(double myTime);
 
-   bool detectFall(FeetState fstate);
+   bool detectCar(DoorState fstate);
  
-   bool getHit();
+   bool getGoat();
 
-   bool getFall();
+   bool getCar();
    
 };
 
