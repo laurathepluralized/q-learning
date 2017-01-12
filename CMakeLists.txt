@@ -20,6 +20,7 @@ add_subdirectory(src)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${Q_DIR})
 
-add_executable(qlearn_test main.cpp src/QLearner.cpp src/QLearnerNode.cpp src/QLearningSimulate.cpp)
+#add_executable(qlearn_test main.cpp src/QLearner.cpp src/QLearnerNode.cpp src/QLearningSimulate.cpp)
+add_executable(qlearn_test q_learning_test.cpp src/QLearner.cpp src/QLearnerNode.cpp src/QLearningSimulate.cpp)
 
 
