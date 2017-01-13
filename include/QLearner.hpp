@@ -1,135 +1,131 @@
 #ifndef _QLEARNER_
 #define _QLEARNER_
 
-#include "core.hpp"
-#include "log.hpp"
 #include <float.h>
-#include <stdlib.h>
-#include <time.h>
+#include <cstdlib>
+#include <ctime>
 #include <fstream>
 #include <sstream>
+#include <random>
 
+#include "core_mh.hpp"
+#include "log.hpp"
 /*
  * Agent that uses Q-learning with ...
 */
 class QLearner: public Agent
 {
+
+     // NOTE: I think TSP stands for support phase time (T_sp)
+     // If any TSW or T_sw terms pop up, probably stands for swing phase time
+     // CPG = Central Pattern Generator
 private:
 
-   std::vector<QTable> Q;
+    std::vector<QTable> Q;
 
-   std::vector<QTable> Policy;
-   
-   float epsilon; /* exploration prob */
-   float alpha; /* learning rate */
-   float gamma; /* discount rate */
+    std::vector<QTable> Policy;
+    
+    float epsilon; /* exploration prob */
+    float alpha; /* learning rate */
+    float gamma; /* discount rate */
 
-   float tsprate; /* probability to try a particular TSP solution */
+    float cooling_rate; /* probability to try a particular TSP solution */
 
-   double myTime; //TODO: temporary variable, time at which collision occurs
-   int carcount;
-   unsigned int carthreshold;
+    double myTime; //TODO: temporary variable, time at which collision occurs
+    int resCount=0;
+    unsigned int threshold;
 
-   bool goat; // true when external perturbation occurs. TODO: How to get this ??
-   bool down; // true when robot cars on the ground. TODO: How to get this ??
+    bool result; // true when specific result occurs
+    bool end_cond; // true when end condition occurs
 
-   double *currentQ; // need to update 'Q-values' :)
+    double *currentQ; // need to update 'Q-values' :)
 
-   bool isStateSeen(const StateActionPair& s_a_pair, const State& state, 
+    bool isStateSeen(const StateActionPair& s_a_pair, const State& state, 
 			const Action& action) const;
 
-   std::vector<Action> getTriedActions(const State& state) const;
+    std::vector<Action> getTriedActions(const State& state) const;
 
-   std::vector<Action> getLegalActions(const State& state, unsigned int type) const ;
+    std::vector<Action> getLegalActions(const State& state, unsigned int type) const ;
 
-   bool flipCoin (double p);
+    bool flipCoin (double p);
 
-   int randomLimit(unsigned int min, unsigned int max) const;
+    int randomLimit(unsigned int min, unsigned int max) const;
 
-   bool insertStateActionPair(const State& state, const Action& action);
+    bool insertStateActionPair(const State& state, const Action& action);
 
-   DoorState determineState(double lfrontL, double lfrontR, 
-           double rfrontL, double rfrontR, double lbackL, double lbackR, 
-           double rbackL, double rbackR);
+    CurrentState determineState();
 
-   bool isStatePresent(std::vector<QTable>& q, const State& state) const;
+    bool isStatePresent(std::vector<QTable>& q, const State& state) const;
 
-   int getStateIndex(std::vector<QTable>& q, const State& state) const;
+    int getStateIndex(std::vector<QTable>& q, const State& state) const;
 
-   std::vector<QTable> getCurrentPolicy() const;
+    std::vector<QTable> getCurrentPolicy() const;
 
-   Action getBaseActionTSP() const;
+    //Action getBaseActionTSP() const;
 
-   Action getAllActionTSP() const;  
+    //Action getAllActionTSP() const;  
 
-   DoorState getDoorState(const int idx) const;
+    CurrentState getCurrentState(const int idx) const;
 
-   PatternType getPattern(const int idx) const;
+    ActionSpace getAction(const int idx) const;
 
-   /*Optimization Stuff*/
-
-   /*
-    * A naive approach but can work if you are lucky :).
-   */
-   PatternType getRandomPattern(unsigned int min_val, unsigned int max_val) const;
-
-   void getTSP(Action& act1) const;
+    ActionSpace getRandomPattern(unsigned int min_val, unsigned int max_val) const;
 
 public:
 
-   QLearner();
+    QLearner();
 
-   QLearner(float epsilon, float alpha, 
-            float gamma, float tsprate
-            );
+    QLearner(float epsilon, float alpha, 
+                float gamma, float cooling_rate
+                );
 
-   void init(float epsilon, float alpha, float gamma, float tsprate, 
-           unsigned int carthreshold, double myTime);
+    void init(float epsilon, float alpha, float gamma, float cooling_rate, 
+              unsigned int threshold, double myTime);
 
-   int getReward();
+    int getReward();
 
-   double getQValue(const State& state, const Action& action);
+    double getQValue(const State& state, const Action& action);
 
-   bool updateQValue(const State& state, const Action& action, double qvalue);
+    bool updateQValue(const State& state, const Action& action, double qvalue);
 
-   double getValue(const State& state);
+    double getValue(const State& state);
 
-   Action getAction(State& state);
+    Action getAction(State& state);
 
-   void doAction(Action& action);
+    void doAction(Action& action);
 
-   virtual Action getPolicy(const State& state);
+    virtual Action getPolicy(const State& state);
 
-   Action justPolicy(State& state);
+    Action justPolicy(State& state);
 
-   void update(State& state, Action& action, State& nextstate, int reward);
+    void update(State& state, Action& action, State& nextstate, int reward);
 
-   virtual ~QLearner();
+    virtual ~QLearner();
 
-   virtual bool savePolicy(const std::string filename);
+    virtual bool savePolicy(const std::string filename);
 
-   bool loadPolicy(const std::string filename);
-   
-   void printCurrentPolicy();
+    bool loadPolicy(const std::string filename);
+    
+    void printCurrentPolicy();
 
-   void printPersistentPolicy();
+    void printPersistentPolicy();
 
-   bool loadQTable(const std::string filename);
+    bool loadQTable(const std::string filename);
 
-   bool saveQTable(const std::string filename);
+    bool saveQTable(const std::string filename);
 
-   void printQTable();
+    void printQTable();
 
-   bool createPersistence(const std::string qtablePath, const std::string policyPath);
+    bool createPersistence(const std::string qtablePath, const std::string policyPath);
 
-   bool detectPerturbation(double myTime);
+    //bool detectPerturbation(double myTime);
 
-   bool detectCar(DoorState fstate);
+    bool detectEnd(CurrentState fstate);
  
-   bool getGoat();
+    bool getRes();
 
-   bool getCar();
-   
+    bool getEnd();
+    std::default_random_engine gen_;
 };
 
 #endif

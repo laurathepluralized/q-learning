@@ -14,8 +14,6 @@ public:
    double* simulateStateData(int type);
    int randomLimit(unsigned int min, unsigned int max);
    bool flipCoin (double p);
-   FeetState determineState(double lfrontL, double lfrontR, 
-           double rfrontL, double rfrontR, double lbackL, double lbackR, 
-           double rbackL, double rbackR);
+   CurrentState determineState();
    int run();
 };

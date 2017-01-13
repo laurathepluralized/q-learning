@@ -4,66 +4,24 @@
 #include <vector>
 #include <string>
 
-// This is a simple Monty Hall problem state space for testing purposes
+#include "currentState.hpp"
+#include "actionSpace.hpp"
 
 /*
- * DoorState{CCS, CSC, SCC, OCS, COS, OSC, CSO, SCO, SOC, OOC, OCO, COO}
+ * Struct to represent actions_set
 */
-//enum DoorState{BOTH_ON_GROUND, RIGHT_ON_GROUND, LEFT_ON_GROUND, BOTH_NOT_ON_GROUND};
-/*
- * Now we have 16 states based on the values of 8 fsrs on each foot,
- * i.e 2 states for each foot i.e front back e.g: value 
- * of front and back  fsrs for each foot, 2 exp 4 = 16 states.
- *    left	 right
- * +--------+ +--------+
- * |0.0  0.0| |0.0  0.0|  front
- * |        | |        |
- * |0.0  0.0| |0.0  0.0|  back
-*/
-enum DoorState{CCS, CSC, SCC, OCS, COS, OSC, CSO, SCO, SOC, OOC, OCO, COO};
-
-/*
- * Available Patterns
-*/
-enum PatternType{ PLATEAU , 
-    QUIESCENT , 
-    AMORTI , 
-    OSCILLATORY ,
-    SLOWOSCILLATION , 
-    FASTOSCILLATION};
-
-/*
- * sigma_s, sigma_f values for the available patterns. 
- * //TODO: Move the '#define' values to a seperate header file ('rl_define.h').
-*/
-#define Plateau_sigma_s = 0;
-#define Plateau_sigma_f = 2.8;
-#define Quiescent_sigma_s = 0.5;
-#define Quiescent_sigma_f = 0.5;
-#define Amorti_sigma_s = 4.5;
-#define Amorti_sigma_f = 0.6;
-#define Oscillatory_sigma_s = 4.6;
-#define Oscillatory_sigma_f = 1.5;
-#define Oscillatory_slow_sigma_s = 0;
-#define Oscillatory_slow_sigma_f = 0;
-#define Oscillatory_fast_sigma_s = 5.6;
-#define Oscillatory_fast_sigma_f = 1.15;
-
-/*
- * Struct to represent base sigma_s, sigma_f of rs_neuron
-*/
-struct rs_neuron_b
+struct actions
 {
-   PatternType pattern;
+   ActionSpace ac_space_member;
 };
 
 /*
- * Struct to be used by 'State' etc, as one state would have 24 values i.e one for each joint/CPG
+ * Struct to be used by 'State'
 */
 
-struct rs_neuron
+struct actions_set
 {
-   rs_neuron_b rsneuron[24];
+   actions action_vec[24];
 };
 
 /*
@@ -72,14 +30,14 @@ struct rs_neuron
 class State
 {
    public:
-   DoorState door_state;
+   CurrentState curr_state;
 
    /*
     * A Simple method to comapare door states
    */
-   bool compareStates(const DoorState f1) const
+   bool compareStates(const CurrentState f1) const
    {
-      if(this->door_state == f1)
+      if(this->curr_state == f1)
       {
          return true;
       }
@@ -89,9 +47,9 @@ class State
    std::string getName()
    {
       std::string state = "";
-      switch(door_state)
+      switch(curr_state)
       {
-//enum DoorState{CCS, CSC, SCC, OCS, COS, OSC, CSO, SCO, SOC, OOC, OCO, COO};
+//enum CurrentState{CCS, CSC, SCC, OCS, COS, OSC, CSO, SCO, SOC, OOC, OCO, COO};
          case CCS:
             state += "Closed Closed Selected";
             break;
@@ -128,6 +86,9 @@ class State
          case COO:
             state += "Closed Open Open";
             break;
+         default:
+            state += "INVALID";
+            break;
       }
       state += "\n";
       return state;
@@ -136,12 +97,12 @@ class State
    /*
     * Overloaded needed because of 'this' thing.
    */
-   static std::string getName(DoorState fstate)
+   static std::string getName(CurrentState fstate)
    {
       std::string state = "";
       switch(fstate)
       {
-//enum DoorState{CCS, CSC, SCC, OCS, COS, OSC, CSO, SCO, SOC, OOC, OCO, COO};
+//enum CurrentState{CCS, CSC, SCC, OCS, COS, OSC, CSO, SCO, SOC, OOC, OCO, COO};
          case CCS:
             state += "Closed Closed Selected";
             break;
@@ -196,17 +157,17 @@ class State
 class Action
 {
    public:
-   rs_neuron rs_neuron_pattern;
+   actions_set ac_set;
 
    /*
-    * A simple method to compare Actions i.e rs_neuron values 
+    * A simple method to compare Actions i.e actions_set values 
     * //TODO: Also incorporate pfneuron only if applicable.
    */
    bool compareActions(const Action& action) const
    {
       for(int i = 0; i < 24; i++)
       {
-         if(this->rs_neuron_pattern.rsneuron[i].pattern == action.rs_neuron_pattern.rsneuron[i].pattern)
+         if(this->ac_set.action_vec[i].ac_space_member == action.ac_set.action_vec[i].ac_space_member)
             continue;
          else
             return false;
@@ -221,25 +182,11 @@ class Action
    bool isValid()
    {
       bool valid = true;
-      for(int i = 0; i < 24; i++)
+      for(int i = 0; i < LEN_AC_VEC; i++)
       {
-         switch(rs_neuron_pattern.rsneuron[i].pattern)
+         if(!(ac_set.action_vec[i].ac_space_member >= 0) || !(ac_set.action_vec[i].ac_space_member < LEN_AC_VEC))
          {
-            case PLATEAU:
-               break;
-            case QUIESCENT:
-               break;
-            case AMORTI:
-               break;
-            case OSCILLATORY:
-               break;
-            case SLOWOSCILLATION:
-               break;
-            case FASTOSCILLATION:
-               break;
-	    default:
                valid = false;
-               break;
          }
       }
       return valid;
@@ -250,29 +197,17 @@ class Action
       std::string action = "";
       for(int i = 0; i < 24; i++)
       {
-         switch(rs_neuron_pattern.rsneuron[i].pattern)
+         switch(ac_set.action_vec[i].ac_space_member)
          {
-            case PLATEAU:
-               action += "Plateau ";
+            case SWITCH:
+               action += "Switch ";
                break;
-            case QUIESCENT:
-               action += "Quiescent ";
-               break;
-            case AMORTI:
-               action += "Amorti ";
-               break;
-            case OSCILLATORY:
-               action += "Oscillatory ";
-               break;
-            case SLOWOSCILLATION:
-               action += "Slow Oscillation ";
-               break;
-            case FASTOSCILLATION:
-               action += "Fast Oscillation ";
+            case REMAIN:
+               action += "Remain ";
                break;
 	    default:
                action += "Unknown/Invalid Action -- " ;
-               action +=  rs_neuron_pattern.rsneuron[i].pattern;
+               action +=  ac_set.action_vec[i].ac_space_member;
                action += " ";
                break;
          }

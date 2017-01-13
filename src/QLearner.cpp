@@ -1,15 +1,20 @@
+
+#include <cmath>
+
 #include "../include/QLearner.hpp"
 
 QLearner::QLearner() {}
 
 QLearner::QLearner(float epsilon, float alpha, 
-                         float gamma, float tsprate): epsilon(epsilon), alpha(alpha),
-                    	    gamma(gamma), tsprate(tsprate), currentQ(NULL)
+                         float gamma, float cooling_rate): epsilon(epsilon), alpha(alpha),
+                    	    gamma(gamma), cooling_rate(cooling_rate), currentQ(NULL)
 {
-     // Monty hall never chooses a car door on his choice, so initialize car to false and goat to true
-    car = false; 
+     // Monty hall never chooses a end_cond door on his choice, so initialize end_cond to false and result to true
+    end_cond = false; 
 
-    goat = true;
+    result = true;
+
+
 }
 
 /*
@@ -18,15 +23,16 @@ QLearner::QLearner(float epsilon, float alpha,
  * if QLearner has to be used a member of a custom class.
 */
 
-void QLearner::init(float epsilon, float alpha, float gamma, float tsprate, 
-          unsigned int fallthreshold, double myTime)
+void QLearner::init(float epsilon, float alpha, float gamma, float cooling_rate, 
+          unsigned int threshold, double myTime)
 {
     this->epsilon         = epsilon;
     this->alpha            = alpha;
     this->gamma            = gamma;
-    //this->tsprate         = tsprate;
-    //this->fallthreshold = fallthreshold;
+    //this->cooling_rate         = cooling_rate;
+    //this->threshold = threshold;
     this->myTime          = myTime;
+
 }
 
 /*
@@ -148,7 +154,7 @@ Action QLearner::justPolicy(State& state)
     std::vector<QTable>::iterator iter;
     for(iter = Policy.begin(); iter != Policy.end(); ++iter)
     {
-         if(iter->state_action_pair.state.compareStates(state.door_state))
+         if(iter->state_action_pair.state.compareStates(state.curr_state))
          {
              return iter->state_action_pair.action;
          }
@@ -195,10 +201,10 @@ Action QLearner::getAction(State& state)
     {
         std::vector<Action> listofactions;
         /*
-         * With 'tsprate' probability try 'type 2' solution as this is our base 
+         * With 'cooling_rate' probability try 'type 2' solution as this is our base 
          * solution, else try random stuff.
         */
-        if(flipCoin(tsprate))
+        if(flipCoin(cooling_rate))
         {
              listofactions = getLegalActions(state, 0); // type '0'
              //TODO: Try other types as well
@@ -265,7 +271,7 @@ void QLearner::update(State& state, Action& action, State& nextstate, int reward
         sample = reward + (gamma * max);
     }
     
-    double *ptr = NULL;
+    //double *ptr = NULL;
     double valueupdate = ( (1.0 - alpha) * getQValue(state, action) ) + (alpha * sample);
     // update the 'q-value'
     if(updateQValue(state, action, valueupdate))
@@ -281,23 +287,25 @@ void QLearner::update(State& state, Action& action, State& nextstate, int reward
 
 int QLearner::getReward()
 {
-    if(!goat) // no living reward
+    if(!result) // no living reward
     {
         return 0;
     }
     else 
+    {
          // TODO: wait for few seconds 'in case of perturbation' to get reward, 
          // as it will take some time to fall, sleep()
-        if(!car) 
+        if(!end_cond) 
         {
              // robot survives the collision 
-             // TODO: how to detect that robot actually survives or is falling car
+             // TODO: how to detect that robot actually survives or is falling end_cond
             return 10;
         }
         else
         {
             return -5;
         }
+    }
 }
 
 bool QLearner::loadPolicy(const std::string filename)
@@ -310,7 +318,7 @@ bool QLearner::loadPolicy(const std::string filename)
     }
     std::string line;
     /*
-     * DoorState Q-value action1,action2... \n
+     * CurrentState Q-value action1,action2... \n
      */
     while(std::getline(file, line))
     {
@@ -323,10 +331,10 @@ bool QLearner::loadPolicy(const std::string filename)
         int state;
         state = tvalues[0];
         qtab.qvalue = tvalues[1];
-        qtab.state_action_pair.state.door_state = getDoorState(state);
-        for(int i = 2; i != tvalues.size(); i++)
+        qtab.state_action_pair.state.curr_state = getCurrentState(state);
+        for(unsigned int i = 2; i < tvalues.size(); ++i)
         {
-              qtab.state_action_pair.action.rs_neuron_pattern.rsneuron[i-2].pattern = getPattern(tvalues[i]);
+              qtab.state_action_pair.action.ac_set.action_vec[i-2].ac_space_member = getAction(tvalues[i]);
         }
         Policy.push_back(qtab);
     }
@@ -348,12 +356,12 @@ bool QLearner::savePolicy(const std::string filename)
     for(iter = policyQ.begin(); iter != policyQ.end(); ++iter)
     {
         /*
-         * DoorState Q-value action1,action2... \n
+         * CurrentState Q-value action1,action2... \n
          */
-        fprintf(file,"%i %f ",iter->state_action_pair.state.door_state, iter->qvalue);
+        fprintf(file,"%i %f ",iter->state_action_pair.state.curr_state, iter->qvalue);
         for(unsigned int i = 0; i < 24; i++)
         {
-            fprintf(file, "%i ",iter->state_action_pair.action.rs_neuron_pattern.rsneuron[i].pattern);
+            fprintf(file, "%i ",iter->state_action_pair.action.ac_set.action_vec[i].ac_space_member);
         }
         fprintf(file,"\n");
     }
@@ -410,7 +418,7 @@ bool QLearner::loadQTable(const std::string filename)
         return false;
     std::string line;
     /*
-     * DoorState Q-value action1,action2... \n
+     * CurrentState Q-value action1,action2... \n
      */
     while(std::getline(file, line))
     {
@@ -425,10 +433,10 @@ bool QLearner::loadQTable(const std::string filename)
         int state;
         state = tvalues[0];
         qtab.qvalue = tvalues[1];
-        qtab.state_action_pair.state.door_state = getDoorState(state);
-        for(int i = 2; i != tvalues.size(); i++)
+        qtab.state_action_pair.state.curr_state = getCurrentState(state);
+        for(unsigned int i = 2; i < tvalues.size(); ++i)
         {
-              qtab.state_action_pair.action.rs_neuron_pattern.rsneuron[i-2].pattern = getPattern(tvalues[i]);
+              qtab.state_action_pair.action.ac_set.action_vec[i-2].ac_space_member = getAction(tvalues[i]);
         }
         Q.push_back(qtab);
     }
@@ -449,12 +457,12 @@ bool QLearner::saveQTable(const std::string filename)
     for(iter = Q.begin(); iter != Q.end(); ++iter)
     {
         /*
-         * DoorState Q-value action1,action2... \n
+         * CurrentState Q-value action1,action2... \n
          */
-        fprintf(file,"%i %f ",iter->state_action_pair.state.door_state, iter->qvalue);
+        fprintf(file,"%i %f ",iter->state_action_pair.state.curr_state, iter->qvalue);
         for(unsigned int i = 0; i < 24; i++)
         {
-            fprintf(file, "%i ",iter->state_action_pair.action.rs_neuron_pattern.rsneuron[i].pattern);
+            fprintf(file, "%i ",iter->state_action_pair.action.ac_set.action_vec[i].ac_space_member);
         }
         fprintf(file,"\n");
     }
@@ -506,13 +514,13 @@ bool QLearner::createPersistence(const std::string qtablePath, const std::string
 }
 
 /*
- * Returns true is state already seen by 'Q' datastructure :)
+ * Returns true if state already seen by 'Q' datastructure :)
  */
 bool QLearner::isStateSeen(const StateActionPair& s_a_pair, const State& state, 
  			const Action& action) const
 {
     // Step 1. Compare the foot states
-    if(s_a_pair.state.compareStates(state.door_state))
+    if(s_a_pair.state.compareStates(state.curr_state))
     {
         // Step 2. Compare the point of impact.
         // TODO: Right now no way of getting 'point of impact'.
@@ -535,13 +543,13 @@ std::vector<Action> QLearner::getTriedActions(const State& state) const
     std::vector<QTable>::const_iterator iter;
     for(iter = Q.begin(); iter != Q.end(); ++iter)
     {
-        if(iter->state_action_pair.state.compareStates(state.door_state))
+        if(iter->state_action_pair.state.compareStates(state.curr_state))
         {
             actionlist.push_back(iter->state_action_pair.action);
         }
     }
     //TODO: @warn: remove this code
-    DoorState fstate = state.door_state;
+    CurrentState fstate = state.curr_state;
     LOG("Size [TriedActions]: %zu for State: %s\n", actionlist.size(), State::getName(fstate).c_str());
     return actionlist;
 }
@@ -554,73 +562,16 @@ std::vector<Action> QLearner::getTriedActions(const State& state) const
 std::vector<Action> QLearner::getLegalActions(const State& state, unsigned int type) const
 {
     LOG("getLegalActions().. -- type : %i\n", type);
-    unsigned int min_val = 0;
-    unsigned int max_val = 5;
-    unsigned int num_actions = 10;
     std::vector<Action> actionlist;
     Action action;
-    /*
-     * Now also get few new actions which could help us.
-     * type 0: TSP with default solution (John's solution)
-     * type 1: TSP with all actions (uy's solution)
-     * type 3: complete random action :)
-    */
-    switch(type)
-    {
-        case 0:
-            /*
-             * Step 1. Instead of initiliazing with random action, 
-             * use the one solution which we already have.
-            */
-            action = getBaseActionTSP();
+        for(unsigned int val = 0 ; val < LEN_AC_VEC; ++val)
+        {
+            for(int i = 0; i < NUM_ACTIONS; ++i)
+            {
+                action.ac_set.action_vec[i].ac_space_member = static_cast<ActionSpace>(rand() % NUM_ACTIONS);
+            }
             actionlist.push_back(action);
-            /*
-             * Step 2. Randomly pick two joints from the previously initialized action and swap them.
-             * Generate 9 radom/legal actions from TSP, 1st randomly generated action was already 
-             * added to the list.
-            */
-            for(unsigned int val = 0 ; val < (num_actions - 1) ; val++)
-            {
-                getTSP(action);
-                actionlist.push_back(action);
-            }
-            break;
-        case 1:
-            /*
-             * Step 1. Instead of initiliazing with random action, 
-             * use the solution which contains all the actions.
-            */
-            action = getAllActionTSP();
-            actionlist.push_back(action);
-            /*
-             * Step 2. Randomly pick two joints from the previously 
-             * initialized action and swap them.
-             * Generate 9 radom/legal actions from TSP, 1st randomly 
-             * generated action was already added to the list.
-            */
-            for(unsigned int val = 0 ; val < (num_actions - 1) ; val++)
-            {
-                getTSP(action);
-                actionlist.push_back(action);
-            }
-            break;
-        case 2:
-            /*
-            * Generate 'num_actions' random/legal actions for a state to try and 
-            * lets hope to find the optimal solution.
-            * TODO: Find a better strategy
-            * @imp: Candidate for improvement.
-            */
-            for(unsigned int val = 0 ; val < num_actions ; val++)
-            {
-                for(int i = 0; i < 24; i++)
-                {
-                    action.rs_neuron_pattern.rsneuron[i].pattern = getRandomPattern(min_val, max_val);
-                }
-                actionlist.push_back(action);
-            }
-            break;
-    }
+        }
 
     LOG("# of legal actions: %zu\n", actionlist.size());
 
@@ -635,7 +586,8 @@ std::vector<Action> QLearner::getLegalActions(const State& state, unsigned int t
 
 bool QLearner::flipCoin(double p)
 {
-    double r = ((double) rand() / (RAND_MAX));
+    std::uniform_real_distribution<double> coin_flipper_(0.0,1.0);
+    double r = coin_flipper_(gen_);
     
     return r < p;
 }
@@ -664,50 +616,16 @@ bool QLearner::insertStateActionPair(const State& state, const Action& action)
 /*
  * This method takes the 8 FSRS of both feet to determine the state of the robot, 
  * which would be one state out of possible 
- * 'DoorState', see core.hpp for more details.
+ * 'CurrentState', see core.hpp for more details.
 */
 
-DoorState QLearner::determineState(double lfrontL, double lfrontR, double rfrontL, double rfrontR, 
-          double lbackL, double lbackR, double rbackL, double rbackR)
+CurrentState QLearner::determineState()
 {
-    double lfront, rfront, lback, rback;
-    lfront = lfrontL + lfrontR;
-    rfront = rfrontL + rfrontR;
-    lback  = lbackL  + lbackR;
-    rback  = rbackL  + rbackR;
-    DoorState fstate;
-    if( (lfront < 1.0) && (rfront < 1.0) && (lback < 1.0) && (rback < 1.0) )
-        fstate = ZERO_FSRS;
-    else if( (lfront < 1.0) && (rfront < 1.0) && (lback < 1.0) && (rback > 1.0) )
-        fstate = R_BACK;
-    else if( (lfront < 1.0) && (rfront < 1.0) && (lback > 1.0) && (rback < 1.0) )
-        fstate = L_BACK;
-    else if( (lfront < 1.0) && (rfront < 1.0) && (lback > 1.0) && (rback > 1.0) )
-        fstate = L_R_BACK;
-    else if( (lfront < 1.0) && (rfront > 1.0) && (lback < 1.0) && (rback < 1.0) )
-        fstate = R_FRONT;
-    else if( (lfront < 1.0) && (rfront > 1.0) && (lback < 1.0) && (rback > 1.0) )
-        fstate = R_FRONT_BACK;
-    else if( (lfront < 1.0) && (rfront > 1.0) && (lback > 1.0) && (rback < 1.0) )
-        fstate = L_BACK_R_FRONT;
-    else if( (lfront < 1.0) && (rfront > 1.0) && (lback > 1.0) && (rback > 1.0) )
-        fstate = L_R_BACK_R_FRONT;
-    else if( (lfront > 1.0) && (rfront < 1.0) && (lback < 1.0) && (rback < 1.0) )
-        fstate = L_FRONT;
-    else if( (lfront > 1.0) && (rfront < 1.0) && (lback < 1.0) && (rback > 1.0) )
-        fstate = L_FRONT_R_BACK;
-    else if( (lfront > 1.0) && (rfront < 1.0) && (lback > 1.0) && (rback < 1.0) )
-        fstate = L_FRONT_BACK;
-    else if( (lfront > 1.0) && (rfront < 1.0) && (lback > 1.0) && (rback > 1.0) )
-        fstate = L_R_BACK_L_FRONT;
-    else if( (lfront > 1.0) && (rfront > 1.0) && (lback < 1.0) && (rback < 1.0) )
-        fstate = L_R_FRONT;
-    else if( (lfront > 1.0) && (rfront > 1.0) && (lback < 1.0) && (rback > 1.0) )
-        fstate = L_R_FRONT_R_BACK;
-    else if( (lfront > 1.0) && (rfront > 1.0) && (lback > 1.0) && (rback < 1.0) )
-        fstate = L_R_FRONT_L_BACK;
-    else if( (lfront > 1.0) && (rfront > 1.0) && (lback > 1.0) && (rback > 1.0) )
-        fstate = ALL_FSRS;
+    CurrentState fstate;
+    // Insert logic to determine which state we are currently in here
+    //
+    // Right now, using a stupid/naive random choice
+    fstate = static_cast<CurrentState>(rand() % NUM_STATES);
     return fstate;
 }
 
@@ -720,7 +638,7 @@ bool QLearner::isStatePresent(std::vector<QTable>& q, const State& state) const
     std::vector<QTable>::iterator iter;
     for(iter = q.begin(); iter != q.end(); ++iter)
     {
-        if(iter->state_action_pair.state.compareStates(state.door_state))
+        if(iter->state_action_pair.state.compareStates(state.curr_state))
         {
             return true;
         }
@@ -738,7 +656,7 @@ int QLearner::getStateIndex(std::vector<QTable>& q, const State& state) const
     int idx = 0;
     for(iter = q.begin(); iter != q.end(); ++iter)
     {
-        if(iter->state_action_pair.state.compareStates(state.door_state))
+        if(iter->state_action_pair.state.compareStates(state.curr_state))
         {
             return idx;
         }
@@ -787,74 +705,76 @@ std::vector<QTable> QLearner::getCurrentPolicy() const
 
 /*
  * One known solution used by TSP
-*/
 Action QLearner::getBaseActionTSP() const
 {
     Action action;
-    action.rs_neuron_pattern.rsneuron[0].pattern = QUIESCENT;
-    action.rs_neuron_pattern.rsneuron[1].pattern = QUIESCENT;
-    action.rs_neuron_pattern.rsneuron[2].pattern = QUIESCENT;
-    action.rs_neuron_pattern.rsneuron[3].pattern = QUIESCENT;
-    action.rs_neuron_pattern.rsneuron[4].pattern = PLATEAU;
-    action.rs_neuron_pattern.rsneuron[5].pattern = PLATEAU;
-    action.rs_neuron_pattern.rsneuron[6].pattern = PLATEAU;
-    action.rs_neuron_pattern.rsneuron[7].pattern = PLATEAU;
-    action.rs_neuron_pattern.rsneuron[8].pattern = QUIESCENT;
-    action.rs_neuron_pattern.rsneuron[9].pattern = QUIESCENT;
-    action.rs_neuron_pattern.rsneuron[10].pattern = QUIESCENT;
-    action.rs_neuron_pattern.rsneuron[11].pattern = QUIESCENT;
-    action.rs_neuron_pattern.rsneuron[12].pattern = QUIESCENT;
-    action.rs_neuron_pattern.rsneuron[13].pattern = QUIESCENT;
-    action.rs_neuron_pattern.rsneuron[14].pattern = PLATEAU;
-    action.rs_neuron_pattern.rsneuron[15].pattern = PLATEAU;
-    action.rs_neuron_pattern.rsneuron[16].pattern = PLATEAU;
-    action.rs_neuron_pattern.rsneuron[17].pattern = PLATEAU;
-    action.rs_neuron_pattern.rsneuron[18].pattern = QUIESCENT;
-    action.rs_neuron_pattern.rsneuron[19].pattern = QUIESCENT;
-    action.rs_neuron_pattern.rsneuron[20].pattern = PLATEAU;
-    action.rs_neuron_pattern.rsneuron[21].pattern = PLATEAU;
-    action.rs_neuron_pattern.rsneuron[22].pattern = PLATEAU;
-    action.rs_neuron_pattern.rsneuron[23].pattern = PLATEAU;
+    action.ac_set.action_vec[0].ac_space_member = QUIESCENT;
+    action.ac_set.action_vec[1].ac_space_member = QUIESCENT;
+    action.ac_set.action_vec[2].ac_space_member = QUIESCENT;
+    action.ac_set.action_vec[3].ac_space_member = QUIESCENT;
+    action.ac_set.action_vec[4].ac_space_member = PLATEAU;
+    action.ac_set.action_vec[5].ac_space_member = PLATEAU;
+    action.ac_set.action_vec[6].ac_space_member = PLATEAU;
+    action.ac_set.action_vec[7].ac_space_member = PLATEAU;
+    action.ac_set.action_vec[8].ac_space_member = QUIESCENT;
+    action.ac_set.action_vec[9].ac_space_member = QUIESCENT;
+    action.ac_set.action_vec[10].ac_space_member = QUIESCENT;
+    action.ac_set.action_vec[11].ac_space_member = QUIESCENT;
+    action.ac_set.action_vec[12].ac_space_member = QUIESCENT;
+    action.ac_set.action_vec[13].ac_space_member = QUIESCENT;
+    action.ac_set.action_vec[14].ac_space_member = PLATEAU;
+    action.ac_set.action_vec[15].ac_space_member = PLATEAU;
+    action.ac_set.action_vec[16].ac_space_member = PLATEAU;
+    action.ac_set.action_vec[17].ac_space_member = PLATEAU;
+    action.ac_set.action_vec[18].ac_space_member = QUIESCENT;
+    action.ac_set.action_vec[19].ac_space_member = QUIESCENT;
+    action.ac_set.action_vec[20].ac_space_member = PLATEAU;
+    action.ac_set.action_vec[21].ac_space_member = PLATEAU;
+    action.ac_set.action_vec[22].ac_space_member = PLATEAU;
+    action.ac_set.action_vec[23].ac_space_member = PLATEAU;
     return action;
 }
 
+*/
 /*
  * Solution used by TSP which contains all the actions.
  * TODO: Make it more sensible :/
-*/
 Action QLearner::getAllActionTSP() const
 {
     Action action;
-    action.rs_neuron_pattern.rsneuron[0].pattern = QUIESCENT;
-    action.rs_neuron_pattern.rsneuron[1].pattern = QUIESCENT;
-    action.rs_neuron_pattern.rsneuron[2].pattern = QUIESCENT;
-    action.rs_neuron_pattern.rsneuron[3].pattern = QUIESCENT;
-    action.rs_neuron_pattern.rsneuron[4].pattern = PLATEAU;
-    action.rs_neuron_pattern.rsneuron[5].pattern = PLATEAU;
-    action.rs_neuron_pattern.rsneuron[6].pattern = PLATEAU;
-    action.rs_neuron_pattern.rsneuron[7].pattern = PLATEAU;
-    action.rs_neuron_pattern.rsneuron[8].pattern = QUIESCENT;
-    action.rs_neuron_pattern.rsneuron[9].pattern = QUIESCENT;
-    action.rs_neuron_pattern.rsneuron[10].pattern = QUIESCENT;
-    action.rs_neuron_pattern.rsneuron[11].pattern = QUIESCENT;
-    action.rs_neuron_pattern.rsneuron[12].pattern = QUIESCENT;
-    action.rs_neuron_pattern.rsneuron[13].pattern = QUIESCENT;
-    action.rs_neuron_pattern.rsneuron[14].pattern = PLATEAU;
-    action.rs_neuron_pattern.rsneuron[15].pattern = PLATEAU;
-    action.rs_neuron_pattern.rsneuron[16].pattern = PLATEAU;
-    action.rs_neuron_pattern.rsneuron[17].pattern = PLATEAU;
-    action.rs_neuron_pattern.rsneuron[18].pattern = QUIESCENT;
-    action.rs_neuron_pattern.rsneuron[19].pattern = QUIESCENT;
-    action.rs_neuron_pattern.rsneuron[20].pattern = PLATEAU;
-    action.rs_neuron_pattern.rsneuron[21].pattern = SLOWOSCILLATION; //PLATEAU
-    action.rs_neuron_pattern.rsneuron[22].pattern = PLATEAU;
-    action.rs_neuron_pattern.rsneuron[23].pattern = OSCILLATORY; //PLATEAU
+    action.ac_set.action_vec[0].ac_space_member = QUIESCENT;
+    action.ac_set.action_vec[1].ac_space_member = QUIESCENT;
+    action.ac_set.action_vec[2].ac_space_member = QUIESCENT;
+    action.ac_set.action_vec[3].ac_space_member = QUIESCENT;
+    action.ac_set.action_vec[4].ac_space_member = PLATEAU;
+    action.ac_set.action_vec[5].ac_space_member = PLATEAU;
+    action.ac_set.action_vec[6].ac_space_member = PLATEAU;
+    action.ac_set.action_vec[7].ac_space_member = PLATEAU;
+    action.ac_set.action_vec[8].ac_space_member = QUIESCENT;
+    action.ac_set.action_vec[9].ac_space_member = QUIESCENT;
+    action.ac_set.action_vec[10].ac_space_member = QUIESCENT;
+    action.ac_set.action_vec[11].ac_space_member = QUIESCENT;
+    action.ac_set.action_vec[12].ac_space_member = QUIESCENT;
+    action.ac_set.action_vec[13].ac_space_member = QUIESCENT;
+    action.ac_set.action_vec[14].ac_space_member = PLATEAU;
+    action.ac_set.action_vec[15].ac_space_member = PLATEAU;
+    action.ac_set.action_vec[16].ac_space_member = PLATEAU;
+    action.ac_set.action_vec[17].ac_space_member = PLATEAU;
+    action.ac_set.action_vec[18].ac_space_member = QUIESCENT;
+    action.ac_set.action_vec[19].ac_space_member = QUIESCENT;
+    action.ac_set.action_vec[20].ac_space_member = PLATEAU;
+    action.ac_set.action_vec[21].ac_space_member = SLOWOSCILLATION; //PLATEAU
+    action.ac_set.action_vec[22].ac_space_member = PLATEAU;
+    action.ac_set.action_vec[23].ac_space_member = OSCILLATORY; //PLATEAU
     return action;
 }
 
-DoorState QLearner::getDoorState(const int idx) const
+*/
+CurrentState QLearner::getCurrentState(const int idx) const
 {
-    DoorState fstate;
+    //CurrentState fstate = (CurrentState)idx;
+    return (CurrentState)idx;
+    /*
     switch(idx)
     {
         case 0:
@@ -910,62 +830,24 @@ DoorState QLearner::getDoorState(const int idx) const
             ERROR("Unknown/Invalid State \n");
             break;
     }
-    return fstate;
+    */
+    //return fstate;
 }
 
-PatternType QLearner::getPattern(const int idx) const
+ActionSpace QLearner::getAction(const int idx) const
 {
-    PatternType pattern;
-    switch(idx)
-    {
-        case 0:
-            pattern = PLATEAU;
-            break;
-        case 1:
-            pattern = QUIESCENT;
-            break;
-        case 2:
-            pattern = AMORTI;
-            break;
-        case 3:
-            pattern = OSCILLATORY;
-            break;
-        case 4:
-            pattern = SLOWOSCILLATION;
-            break;
-        case 5:
-            pattern = FASTOSCILLATION;
-            break;
-        default:
-        pattern = SLOWOSCILLATION;
-        //TODO: Assign the most probable pattern, does it even make sense ?
-        ERROR("Unknown/Invalid Pattern : %i\n", idx);
-        break;        
-    }
-    return pattern;
+    return (ActionSpace)idx;
 }
 
 /*
- * A naive implementation to get random pattern for the action, 
- * hoping with the probability "p" ('?') to find the appropriate pattern for 
+ * A naive implementation to get random ac_space_member for the action, 
+ * hoping with the probability "p" ('?') to find the appropriate ac_space_member for 
  * the perturbation.
 */
 
-PatternType QLearner::getRandomPattern(unsigned int min_val = 0, unsigned int max_val = 5) const
+ActionSpace QLearner::getRandomPattern(unsigned int min_val = 0, unsigned int max_val = 5) const
 {
-    return getPattern(randomLimit(min_val, max_val));
-}
-
-/*
- * Swaps only two random CPG joints.
-*/
-void QLearner::getTSP(Action& act1) const
-{
-    int step0 = randomLimit(0, 23);
-    int step1 = randomLimit(0, 23);
-    PatternType ptemp = act1.rs_neuron_pattern.rsneuron[step0].pattern;
-    act1.rs_neuron_pattern.rsneuron[step0].pattern = act1.rs_neuron_pattern.rsneuron[step1].pattern;
-    act1.rs_neuron_pattern.rsneuron[step1].pattern = ptemp;
+    return getAction(randomLimit(min_val, max_val));
 }
 
 /*
@@ -973,7 +855,7 @@ void QLearner::getTSP(Action& act1) const
  * TODO: Try to get perturbation detection with accelerometer data.
  * @imp: Candidate for improvement.
 */
-
+/*
 bool QLearner::detectPerturbation(double myTime)
 {
     if(myTime < this->myTime)
@@ -982,52 +864,53 @@ bool QLearner::detectPerturbation(double myTime)
     }
     else
     {
-        goat = true;
+        result = true;
     }
     return true;
 }
+*/
 
 /*
- * Take the DoorState and start the counter of 'fallindex'.
+ * Take the CurrentState and start the counter of 'fallindex'.
  * TODO: Find a better way to detect 'robot fall'. 
  * @imp: Candidate for improvement.
 */
-bool QLearner::detectCar(DoorState fstate)
+bool QLearner::detectEnd(CurrentState fstate)
 {
     switch(fstate)
     {
         case 0:
-            fallcount++;
+            resCount++;
             break;
         default:
-            fallcount = -1;
+            resCount = -1;
             break;
     }
 
-    if(fallcount == -1)
+    if(resCount == -1)
     {
         return false;
     }
-    else if(fallcount < fallthreshold)
+    else if(resCount < threshold)
     {
         return false;
     } 
     else
     {
-        car = true;
+        end_cond = true;
     }
     return true; 
 
 }
 
-bool QLearner::getGoat()
+bool QLearner::getRes()
 {
-    return goat;
+    return result;
 }
 
-bool QLearner::getCar()
+bool QLearner::getEnd()
 {
-    return car;
+    return end_cond;
 }
 
 QLearner::~QLearner() {}
